@@ -1,0 +1,120 @@
+Table users {
+  user_id int [pk]
+  name varchar
+  email varchar
+  password varchar
+  phone varchar
+}
+
+Table hotels {
+  hotel_id int [pk]
+  name varchar
+  description text
+  address varchar
+  rating float
+}
+
+Table room_types {
+  room_type_id int [pk]
+  type_name varchar
+}
+
+Table rooms {
+  room_id int [pk]
+  hotel_id int [ref: > hotels.hotel_id]
+  room_type_id int [ref: > room_types.room_type_id]
+  price_per_night decimal
+  description text
+  status varchar
+}
+
+Table amenities {
+  amenity_id int [pk]
+  amenity_name varchar
+}
+
+Table hotel_amenities {
+  hotel_id int [ref: > hotels.hotel_id]
+  amenity_id int [ref: > amenities.amenity_id]
+}
+
+Table hotel_photos {
+  photo_id int [pk]
+  hotel_id int [ref: > hotels.hotel_id]
+  photo_url varchar
+  description text
+}
+
+Table room_price_history {
+  price_history_id int [pk]
+  room_id int [ref: > rooms.room_id]
+  price decimal
+  date date
+}
+
+Table bookings {
+  booking_id int [pk]
+  user_id int [ref: > users.user_id]
+  check_in_date date
+  check_out_date date
+  status varchar
+}
+
+Table booking_rooms {
+  booking_id int [ref: > bookings.booking_id]
+  room_id int [ref: > rooms.room_id]
+}
+
+Table payments {
+  payment_id int [pk]
+  booking_id int [ref: > bookings.booking_id]
+  amount decimal
+  payment_date date
+  payment_method varchar
+}
+
+Table payment_transactions {
+  transaction_id int [pk]
+  payment_id int [ref: > payments.payment_id]
+  transaction_date date
+  transaction_amount decimal
+}
+
+Table hotel_reviews {
+  review_id int [pk]
+  user_id int [ref: > users.user_id]
+  hotel_id int [ref: > hotels.hotel_id]
+  rating int
+  review_text text
+  review_date date
+}
+
+Table owners {
+  owner_id int [pk]
+  user_id int [ref: > users.user_id]
+  hotel_id int [ref: > hotels.hotel_id]
+}
+
+Table hotel_bookings {
+  hotel_id int [ref: > hotels.hotel_id]
+  booking_id int [ref: > bookings.booking_id]
+}
+
+Table room_amenities {
+  room_id int [ref: > rooms.room_id]
+  amenity_id int [ref: > amenities.amenity_id]
+}
+
+Table booking_history {
+  booking_history_id int [pk]
+  booking_id int [ref: > bookings.booking_id]
+  status_change_date date
+  old_status varchar
+  new_status varchar
+}
+
+Table user_preferences {
+  user_id int [ref: > users.user_id]
+  room_type_id int [ref: > room_types.room_type_id]
+  amenity_id int [ref: > amenities.amenity_id]
+}
