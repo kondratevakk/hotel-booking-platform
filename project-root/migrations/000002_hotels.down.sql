@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS owners;
+DROP TABLE IF EXISTS hotel_photos;
+DROP TABLE IF EXISTS hotels;

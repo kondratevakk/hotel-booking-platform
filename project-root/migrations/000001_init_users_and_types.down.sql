@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS amenities;
+DROP TABLE IF EXISTS room_types;
+DROP TABLE IF EXISTS users;

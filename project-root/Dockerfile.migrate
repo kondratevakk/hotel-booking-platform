@@ -1,0 +1,8 @@
+FROM golang:1.24-alpine
+
+RUN apk add --no-cache bash postgresql-client && \
+    go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest && \
+    go install github.com/realkarych/seqwall@latest
+
+WORKDIR /app
+ENTRYPOINT ["/bin/bash", "/app/scripts/entrypoint.sh"]
