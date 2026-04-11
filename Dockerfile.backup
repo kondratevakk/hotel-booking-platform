@@ -1,0 +1,28 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    cron \
+    curl \
+    netcat-openbsd \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc \
+    && chmod +x /usr/local/bin/mc
+
+COPY scripts/backup.sh /usr/local/bin/backup.sh
+COPY scripts/restore.sh /usr/local/bin/restore.sh
+COPY scripts/backup-cron-entrypoint.sh /usr/local/bin/backup-cron-entrypoint.sh
+COPY scripts/backup-exporter.sh /usr/local/bin/backup-exporter.sh
+
+RUN chmod +x /usr/local/bin/backup.sh \
+    /usr/local/bin/restore.sh \
+    /usr/local/bin/backup-cron-entrypoint.sh \
+    /usr/local/bin/backup-exporter.sh
+
+RUN mkdir -p /var/backup-metrics /var/log
+
+VOLUME /var/backup-metrics
+
+CMD ["/usr/local/bin/backup-cron-entrypoint.sh"]
