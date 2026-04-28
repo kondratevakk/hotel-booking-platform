@@ -1,0 +1,127 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Last Backup Time",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "backup_last_success_timestamp_seconds * 1000",
+          "legendFormat": "Last backup",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Last Backup Size",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "backup_last_size_bytes",
+          "legendFormat": "Size",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "purple", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Stored Backups Count",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "backup_count",
+          "legendFormat": "Count",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "id": 4,
+      "title": "Time Since Last Backup",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "time() - backup_last_success_timestamp_seconds",
+          "legendFormat": "Seconds since backup",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "bars", "fillOpacity": 50 } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "id": 5,
+      "title": "Backup Size Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "backup_last_size_bytes",
+          "legendFormat": "Backup size",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["backup"],
+  "templating": { "list": [] },
+  "time": { "from": "now-7d", "to": "now" },
+  "title": "Backup Monitoring",
+  "uid": "backup-monitoring"
+}

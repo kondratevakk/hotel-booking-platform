@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: hotel_postgres
+    restart: always
+    env_file: .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sh:/docker-entrypoint-initdb.d/01-init-test-db.sh:ro
+      - ./scripts/init-exporter-user.sh:/docker-entrypoint-initdb.d/02-init-exporter-user.sh:ro
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: hotel_migrations
+    depends_on:
+      - postgres
+    env_file: .env
+    environment:
+      - MAIN_DB_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      - TEST_DB_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_test?sslmode=disable
+    volumes:
+      - ./migrations:/app/migrations:ro
+      - ./scripts:/app/scripts:ro
+      - ./seeds:/app/seeds:ro
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    container_name: hotel_postgres_exporter
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      - DATA_SOURCE_NAME=postgresql://exporter:exporter_pass@postgres:5432/hotel_booking?sslmode=disable
+    ports:
+      - "9187:9187"
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: hotel_prometheus
+    restart: always
+    depends_on:
+      - postgres_exporter
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  minio:
+    image: minio/minio:RELEASE.2024-04-18T19-09-19Z
+    container_name: hotel_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  backup_scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: hotel_backup_scheduler
+    restart: always
+    depends_on:
+      - postgres
+      - minio
+    env_file: .env
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - BUCKET_BACKUP_NAME=${BUCKET_BACKUP_NAME:-hotel-backups}
+      - BACKUP_RETENTION_COUNT=${BACKUP_RETENTION_COUNT:-7}
+      - BACKUP_INTERVAL=${BACKUP_INTERVAL:-0 2 * * *}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - METRICS_FILE=/var/backup-metrics/backup_metrics.txt
+    volumes:
+      - backup_metrics:/var/backup-metrics
+
+  backup_exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: hotel_backup_exporter
+    restart: always
+    command: ["/usr/local/bin/backup-exporter.sh"]
+    environment:
+      - METRICS_FILE=/var/backup-metrics/backup_metrics.txt
+      - EXPORTER_PORT=9199
+    ports:
+      - "9199:9199"
+    volumes:
+      - backup_metrics:/var/backup-metrics:ro
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: hotel_grafana
+    restart: always
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  pgdata:
+  prometheus_data:
+  grafana_data:
+  minio_data:
+  backup_metrics:

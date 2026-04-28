@@ -1,0 +1,166 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "MinIO Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=\"minio\"}",
+          "legendFormat": "MinIO",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "MinIO Total Storage Used",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "minio_cluster_usage_total_bytes",
+          "legendFormat": "Used",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "MinIO Total Objects",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "minio_cluster_usage_object_total",
+          "legendFormat": "Objects",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "MinIO Total Buckets",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "minio_cluster_usage_buckets_total",
+          "legendFormat": "Buckets",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 20 } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list" } },
+      "title": "MinIO S3 Traffic (Received / Sent)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(minio_s3_traffic_received_bytes_total[5m])",
+          "legendFormat": "Received",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(minio_s3_traffic_sent_bytes_total[5m])",
+          "legendFormat": "Sent",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "fillOpacity": 20 } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list" } },
+      "title": "MinIO S3 Requests Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(minio_s3_requests_total[5m])",
+          "legendFormat": "{{ api }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
+      "title": "MinIO S3 Error Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(minio_s3_requests_errors_total[5m]) / rate(minio_s3_requests_total[5m])",
+          "legendFormat": "Error rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 20 } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "title": "MinIO Disk Usage Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "minio_cluster_disk_free_bytes",
+          "legendFormat": "Free",
+          "refId": "A"
+        },
+        {
+          "expr": "minio_cluster_disk_total_bytes - minio_cluster_disk_free_bytes",
+          "legendFormat": "Used",
+          "refId": "B"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["minio"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "MinIO Monitoring",
+  "uid": "minio-monitoring"
+}
