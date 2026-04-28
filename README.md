@@ -36,3 +36,101 @@
 - Пользователь может иметь несколько предпочтений (тип номера, удобства) — многие ко многим (через таблицу user_preferences).
 - Бронирование может иметь несколько изменений статуса — один ко многим (через таблицу booking_history).
 - Отель может быть связан с несколькими владельцами — многие ко многим (через таблицу owners).
+
+---
+
+## Этап 5. Высокая доступность PostgreSQL
+
+### Архитектура
+
+```
+клиент
+  │
+  ▼
+HAProxy :5432 (primary write) / :5435 (replica read) / :7000 (stats)
+  │                 │
+  ▼                 ▼
+patroni1          patroni2
+PostgreSQL 15     PostgreSQL 15
+  │                 │
+  └────── etcd ─────┘
+     (DCS, выборы лидера)
+```
+
+| Компонент | Роль |
+|-----------|------|
+| **etcd** | Distributed Configuration Store — хранит состояние кластера, координирует выборы primary |
+| **patroni1 / patroni2** | PostgreSQL 15 под управлением Patroni; один узел — primary, второй — streaming replica |
+| **HAProxy** | Единая точка входа: маршрутизирует трафик только на текущий primary через HTTP health-check Patroni REST API (`GET /primary`) |
+
+### Запуск кластера
+
+```bash
+# Остановить обычный стек (занимает порт 5432), если запущен
+docker compose down
+
+# Собрать образ и поднять HA-кластер
+docker compose -f docker-compose.ha.yml up -d --build
+
+# Следить за логами
+docker compose -f docker-compose.ha.yml logs -f
+```
+
+После старта (~30–60 с) patroni1 станет primary, patroni2 — standby.
+
+### Проверка состояния
+
+```bash
+# Patroni REST API — роли узлов
+curl -s http://localhost:8008/ | python3 -m json.tool   # patroni1
+curl -s http://localhost:8009/ | python3 -m json.tool   # patroni2
+
+# Прямое подключение к кластеру через HAProxy (primary)
+PGPASSWORD=postgres_password psql -h localhost -p 5432 -U postgres \
+  -c "SELECT inet_server_addr(), pg_is_in_recovery();"
+
+# HAProxy stats UI
+open http://localhost:7000
+```
+
+### Проверка failover
+
+```bash
+chmod +x scripts/test-failover.sh
+./scripts/test-failover.sh
+```
+
+Скрипт выполняет следующие шаги:
+
+1. Выводит состояние кластера через Patroni REST API.
+2. Определяет текущий primary.
+3. Записывает тестовые данные в таблицу `failover_test` через HAProxy.
+4. Останавливает контейнер primary (`docker stop`).
+5. Ждёт выборов нового primary (до 60 с).
+6. Проверяет, что HAProxy переключился и клиент снова работает.
+7. Проверяет целостность данных.
+8. Перезапускает остановленный узел — он автоматически присоединяется как replica.
+
+### Ожидаемый результат failover
+
+```
+==> 4. Stopping primary container: ha_patroni1
+==> 5. Polling new primary election
+[OK] New primary elected after ~20s
+==> 6. Verify HAProxy routes to new primary
+[OK] HAProxy reconnected. New PostgreSQL server: 172.x.x.x
+[OK] Rows in failover_test: 1 (data intact)
+```
+
+Допустимая пауза при переключении: ~10–30 с (TTL = 30 с, loop_wait = 10 с).
+
+### Файлы
+
+| Файл | Назначение |
+|------|------------|
+| `docker-compose.ha.yml` | Compose-файл HA-кластера |
+| `ha/Dockerfile.patroni` | Образ PostgreSQL 15 + Patroni |
+| `ha/patroni1.yml` | Конфигурация Patroni для узла 1 |
+| `ha/patroni2.yml` | Конфигурация Patroni для узла 2 |
+| `ha/haproxy.cfg` | Конфигурация HAProxy (health-check, маршрутизация) |
+| `scripts/test-failover.sh` | Скрипт автоматической проверки failover |
