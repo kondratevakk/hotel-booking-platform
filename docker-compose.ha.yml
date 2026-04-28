@@ -1,0 +1,121 @@
+version: '3.8'
+
+#   5432 — PostgreSQL primary (via HAProxy)
+#   5435 — PostgreSQL replicas (via HAProxy, read-only)
+#   7000 — HAProxy stats UI  (http://localhost:7000)
+#   8008 — Patroni REST API node 1
+#   8009 — Patroni REST API node 2
+#   2379 — etcd client
+
+services:
+
+  etcd:
+    build:
+      context: .
+      dockerfile: ha/Dockerfile.etcd
+    image: hotel_etcd:3.5.9
+    container_name: ha_etcd
+    restart: unless-stopped
+    command:
+      - --name=etcd0
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd:2380
+      - --initial-cluster=etcd0=http://etcd:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=pg-ha-cluster
+      - --data-dir=/var/lib/etcd
+      - --enable-v2=true
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/var/lib/etcd
+    networks:
+      - ha_net
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  patroni1:
+    build:
+      context: .
+      dockerfile: ha/Dockerfile.patroni
+    container_name: ha_patroni1
+    hostname: patroni1
+    restart: unless-stopped
+    volumes:
+      - ./ha/patroni1.yml:/etc/patroni/patroni.yml:ro
+      - patroni1_data:/data/patroni
+    ports:
+      - "5433:5432"
+      - "8008:8008"
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - ha_net
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8008/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  patroni2:
+    build:
+      context: .
+      dockerfile: ha/Dockerfile.patroni
+    container_name: ha_patroni2
+    hostname: patroni2
+    restart: unless-stopped
+    volumes:
+      - ./ha/patroni2.yml:/etc/patroni/patroni.yml:ro
+      - patroni2_data:/data/patroni
+    ports:
+      - "5434:5432"
+      - "8009:8008"
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - ha_net
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8008/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: ha_haproxy
+    restart: unless-stopped
+    volumes:
+      - ./ha/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "5432:5000"  
+      - "5435:5001"  
+      - "7001:7000" 
+    depends_on:
+      - patroni1
+      - patroni2
+    networks:
+      - ha_net
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  etcd_data:
+  patroni1_data:
+  patroni2_data:
+
+networks:
+  ha_net:
+    driver: bridge

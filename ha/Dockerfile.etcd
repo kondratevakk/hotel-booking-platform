@@ -1,0 +1,18 @@
+FROM debian:bullseye-slim
+
+ARG TARGETARCH
+ARG ETCD_VERSION=v3.5.9
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+    && ARCH=${TARGETARCH:-amd64} \
+    && curl -fsSL "https://github.com/etcd-io/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-${ARCH}.tar.gz" \
+       | tar xz --strip-components=1 -C /usr/local/bin \
+           "etcd-${ETCD_VERSION}-linux-${ARCH}/etcd" \
+           "etcd-${ETCD_VERSION}-linux-${ARCH}/etcdctl" \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /var/lib/etcd && chmod 700 /var/lib/etcd
+
+EXPOSE 2379 2380
+
+ENTRYPOINT ["etcd"]
